@@ -4,6 +4,8 @@
 BoardPoint::BoardPoint(int x, int y) noexcept : x(x), y(y) {
 }
 
+BoardPoint::BoardPoint():x(0), y(0) {};
+
 BoardPoint BoardPoint::shiftLeft(int delta) const noexcept {
 	return BoardPoint(x - delta, y);
 }
@@ -54,4 +56,20 @@ void BoardPoint::print() const noexcept {
 
 bool operator==(const BoardPoint& p1, const BoardPoint& p2) {
 	return ((p1.getX() == p2.getX()) && (p1.getY() == p2.getY()));
+}
+bool operator==( BoardPoint& p1,  BoardPoint& p2) {
+	return ((p1.getX() == p2.getX()) && (p1.getY() == p2.getY()));
+}
+bool operator==( BoardPoint& p1, const BoardPoint& p2) {
+	return ((p1.getX() == p2.getX()) && (p1.getY() == p2.getY()));
+}
+bool operator==(const BoardPoint& p1,  BoardPoint& p2) {
+	return ((p1.getX() == p2.getX()) && (p1.getY() == p2.getY()));
+}
+
+bool operator!=(BoardPoint& p1, const BoardPoint& p2) {
+	return !(p1==p2);
+}
+bool operator!=(const BoardPoint& p1, BoardPoint& p2) {
+	return !(p1 == p2);
 }

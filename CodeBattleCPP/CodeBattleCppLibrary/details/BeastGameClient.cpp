@@ -99,7 +99,9 @@ void BeastGameClient::Run(std::function<LodeRunnerAction(const GameBoard &)> _me
         GameBoard board(message.begin() + offset, message.end());
         const auto result = _message_handler(board);
 
-        std::cout << "Sending: " << std::to_string(result) << '\n';
+        if (static_cast<int>(result) < 0 || static_cast<int>(result)>7)return;
+
+       // std::cout << "Sending: " << std::to_string(result) << '\n';
         m_ws.write(net::buffer(std::to_string(result)));
     }
 }

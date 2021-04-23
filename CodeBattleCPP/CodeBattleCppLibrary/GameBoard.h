@@ -34,9 +34,12 @@ public:
 	bool hasPipeAt(const BoardPoint& point) const;
 	bool hasShadowAt(const BoardPoint& point) const;
 	size_t getBoardSize() const;
+	bool isGamePaused() const;
 
-private:
 	std::vector<std::vector<BoardElement>> m_map;
+	//std::string msg_;
+private:
+
 	std::vector<BoardPoint> m_otherHeroPositions;
 	std::vector<BoardPoint> m_wallPositions;
 	std::vector<BoardPoint> m_goldPositions;
@@ -46,4 +49,5 @@ private:
 	std::vector<BoardPoint> m_portalsPositions;
 	std::vector<BoardPoint> m_pillsPositions;
 	BoardPoint m_myPosition;
+
 };

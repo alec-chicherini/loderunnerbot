@@ -130,13 +130,17 @@ namespace
 	}
 
 } // namespace
-
+#define DEBUG
 GameBoard::GameBoard(std::string::const_iterator begin, std::string::const_iterator end)
 	: m_myPosition(0,0)
 {
+	//msg_= std::string(begin, end);
+
 	const auto messageSize = utf8_strlen(begin, end);
 	int size = static_cast<int>(std::sqrt(messageSize));
 	m_map.resize(size, std::vector<BoardElement>(size, BoardElement::NONE));
+
+	
 
 	auto it = begin;
 	int row = 0, column = 0;
@@ -268,6 +272,7 @@ const std::vector<BoardPoint>& GameBoard::getPortals() const {
 	return m_portalsPositions;
 }
 
+
 const std::vector<BoardPoint>& GameBoard::getShadowPills() const {
 	return m_pillsPositions;
 }
@@ -354,3 +359,4 @@ bool GameBoard::hasShadowAt(const BoardPoint& point) const {
 size_t GameBoard::getBoardSize() const {
 	return m_map.size();
 }
+

@@ -4,6 +4,7 @@ class BoardPoint
 {
 public:
 	BoardPoint(int x, int y) noexcept;
+	BoardPoint();
 
 	BoardPoint shiftLeft(int delta) const noexcept;
 	BoardPoint shiftLeft() const noexcept;
@@ -29,3 +30,8 @@ private:
 };
 
 bool operator==(const BoardPoint& p1, const BoardPoint& p2);
+bool operator==( BoardPoint& p1,  BoardPoint& p2);
+bool operator==(const BoardPoint& p1,  BoardPoint& p2);
+bool operator==( BoardPoint& p1, const BoardPoint& p2);
+bool operator!=(const BoardPoint& p1, BoardPoint& p2);
+bool operator!=(BoardPoint& p1, const BoardPoint& p2);
