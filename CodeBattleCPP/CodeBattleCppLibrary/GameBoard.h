@@ -34,7 +34,8 @@ public:
 	bool hasPipeAt(const BoardPoint& point) const;
 	bool hasShadowAt(const BoardPoint& point) const;
 	size_t getBoardSize() const;
-	bool isGamePaused() const;
+	//bool isGamePaused() const;
+	
 
 	std::vector<std::vector<BoardElement>> m_map;
 	//std::string msg_;

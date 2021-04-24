@@ -1,6 +1,9 @@
 #pragma once
 //#define DEBUG_GRAPHFROMMAP
 //#define DEBUG_CREATEROUTE
+//#define DEBUG_POSSIBLEROUTES
+//#define DEBUG_CHECKCURRENTROUTE
+#define DEBUG_FINDCLEARROUTE
 #define DEBUG
 #include "GameBoard.h"
 #include <vector>
@@ -21,6 +24,22 @@ auto isGold = [&](BE& B) {
 		B == BE::GREEN_GOLD ||
 		B == BE::RED_GOLD ||
 		B == BE::YELLOW_GOLD
+		) return true;
+	else return false;
+};
+
+auto isRouteClear = [&](BE& B) {
+	if (
+		B == BE::GREEN_GOLD ||
+		B == BE::RED_GOLD ||
+		B == BE::YELLOW_GOLD||
+		B == BE::LADDER ||
+		B == BE::PIPE ||
+		B == BE::PORTAL||
+		B == BE::NONE||
+		B == BE::THE_SHADOW_PILL||
+		B == BE::BRICK
+
 		) return true;
 	else return false;
 };
@@ -122,7 +141,7 @@ private:
 	Edges E;
 	std::vector<BoardPoint> V;//Vertexes
 	Edges currentRoute;
-
+	std::vector<Edges> possibleRoutes;
 
 public:
 	void cleanUp() 
@@ -130,6 +149,7 @@ public:
 		E.clear();
 		V.clear();
 		currentRoute.clear();
+		possibleRoutes.clear();
 
 	};
 
@@ -147,8 +167,72 @@ public:
 		return true;
 	};
 
+	bool checkCurrentRoute(const GameBoard& board)
+	{
+		bool result=true;
+#ifdef DEBUG_CHECKCURRENTROUTE
+		std::cout << std::endl;
+		std::cout << "checkCurrentRoute started" << std::endl;
+#endif
+		for (auto& r : currentRoute) {
+			auto current = board.getElementAt(r.second);
+			if (!isRouteClear(current)) {
+				result = false;
+				break;
+			}
+		};
+		
+#ifdef DEBUG_CHECKCURRENTROUTE
+		std::cout << "checkCurrentRoute result:" <<std::boolalpha<< result<<std::endl;
+#endif
+		return result;
+
+	};
+
+	bool findCleanRoute(const GameBoard& board)
+	{
+
+		bool result = false;
+#ifdef DEBUG_FINDCLEARROUTE
+		timedelay timers;
+		timers.addTimer("findCleanRoute");
+		std::cout << std::endl << "findeCleanRoute started:" << std::endl;
+		int skip_counter = 0;
+#endif
+		if (possibleRoutes.size())
+		{
+			possibleRoutes.erase(possibleRoutes.begin());
+			currentRoute = possibleRoutes[0];
+		}
+		else result= false;
+
+		while (possibleRoutes.size())
+		{
+			if (!checkCurrentRoute(board))
+			{
+#ifdef DEBUG_FINDCLEARROUTE
+				skip_counter++;
+#endif
+				possibleRoutes.erase(possibleRoutes.begin());
+				if(possibleRoutes.size())
+				  currentRoute = possibleRoutes[0];
+			}
+			else result= true;
+		}
+
+#ifdef DEBUG_FINDCLEARROUTE
+		std::cout << std::endl << "findeCleanRoute skipped = " << skip_counter
+						       <<" result = "<<std::boolalpha<<result
+							   <<" time passed :"<< timers.readTimer("findCleanRoute") 
+							   << std::endl;
+#endif
+		result = false;
+		return result;
+	};
+
 	BoardPoint makeStep()
 	{
+		if (currentRoute.size() == 0)return BoardPoint(0, 0);
 		auto step = currentRoute.front().second;
 		currentRoute.erase(currentRoute.begin());
 		return std::move(step);
@@ -164,11 +248,12 @@ public:
 		return res;
 	};
 
-	void createRouteWithBFS(const BoardPoint& current, const GameBoard& board)
+	void createRoutesWithBFS(const BoardPoint& current, const GameBoard& board, float timer_value=0.5f)
 	{
 #ifdef DEBUG
 		timedelay timers;
-		timers.addTimer("started");
+		timers.addTimer("BFS");
+		std::cout <<std::endl<< "Finding routes started " << std::endl;
 #endif
 		currentRoute.clear();
 
@@ -194,8 +279,12 @@ public:
 
 		inqueue[current.getX()][current.getY()] = true;
 
+		bool timePassed = false;
 		bool routeComplete = false;
-		while (queue.size() && !routeComplete)
+		possibleRoutes.clear();
+		currentRoute.clear();
+
+		while (queue.size() && !timePassed)
 		{
 
 			auto c =queue.back(); queue.pop_back();
@@ -220,15 +309,15 @@ public:
 
 				allRoutes[p.second] = routeToP();
 
-				
-
 				auto CURRENT = board.m_map[p.second.getY()][p.second.getX()];
 
 				if (isGold(CURRENT))
 				{
 					routeComplete = true;
 
-					currentRoute = allRoutes[p.second];
+					possibleRoutes.push_back(allRoutes[p.second]);
+
+					//currentRoute = allRoutes[p.second];
 
 
 #ifdef DEBUG_CREATEROUTE
@@ -254,16 +343,42 @@ public:
 				}
 				std::cout << "allRoutes map end" << std::endl;
 #endif
+
+				if (timers.readTimer("BFS") > timer_value)
+				{
+					timePassed = true;
+				}
+				else 
+				{
+					routeComplete = false;
+				}
 			}
 
 #ifdef DEBUG_CREATEROUTE
 			std::cout << "queue.size() = " << queue.size() << " routeComplete = " << routeComplete << std::endl;
 #endif
-		}	
+
+		}	//main while bfs search cycle
+
+		if(possibleRoutes.size()>0)
+		currentRoute = possibleRoutes[0];
+
+#ifdef DEBUG_POSSIBLEROUTES
+
+		int counter = 0;
+		std::cout << "possibleRoutes :";
+		for (auto& r : possibleRoutes)
+		{
+			std::cout << "[" << counter++ << "].size()= " << r.size() << " -- ";
+		}
+		std::cout << std::endl;
+
+#endif
 
 #ifdef DEBUG
 
-		std::cout << "Finding route finished : " << timers.readTimer("started") << " s " << std::endl;
+		std::cout <<"Finding routes finished. Possible routes: " << possibleRoutes.size()
+				  <<" Time passed:"<< timers.readTimer("BFS") << " s " << std::endl;
 		//this->print();
 #endif
 	};
@@ -540,7 +655,6 @@ public:
 				}
 			);
 
-			
 			V.erase(std::unique(V.begin(), V.end()), V.end());
 
 #ifdef DEBUG

@@ -5,7 +5,7 @@
 #include "GameBoard.h"
 #include "Graph.h"
 
-#define DEBUG_SEQUENCE
+//#define DEBUG_SEQUENCE
 //#define DEBUG_PAUSE
 
 bool isBaseGraphMade = false;
@@ -100,20 +100,25 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 #ifdef DEBUG_SEQUENCE
 		std::cout << "current_sequence = " << static_cast<int>(current_sequence);
 #endif
-
 		
-		const BoardPoint& position = board.getMyPosition();
-		std::cout << " Hero position is [" << position.getX() << "," << position.getY() << "]\n";
 
 		if (!isBaseGraphMade)
 			isBaseGraphMade = Gr.BuildGraphFromMap(board);
+
+		const BoardPoint& position = board.getMyPosition();
+		std::cout << " [" << position.getX() << "," << position.getY() << "] ->>";
 
 		if (!isCurrentRouteInWork) {
 #ifdef DEBUG_SEQUENCE
 			std::cout << "createRouteWithBFS begin"<<std::endl;
 #endif
-			Gr.createRouteWithBFS(position, board);
+			Gr.createRoutesWithBFS(position, board);
 			Gr.printCurrentRoute();
+			if (!Gr.checkCurrentRoute(board))
+			{
+				if(!Gr.findCleanRoute(board))return LodeRunnerAction::SUICIDE;
+			};
+			
 			isCurrentRouteInWork = true;
 #ifdef DEBUG_SEQUENCE
 			std::cout << "createRouteWithBFS end" << std::endl;
@@ -122,6 +127,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 
 		if (isMoveComplete||(position==nextStep))
 		{
+
 #ifdef DEBUG_SEQUENCE
 			std::cout << "isMoveComplete begin" << std::endl;
 #endif
@@ -130,6 +136,9 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			if (Gr.isCurrentRouteEmpty())
 			{
 				isCurrentRouteInWork = false;
+
+				std::cout << std::endl;
+				std::cout << "Route in work: ";
 			}
 #ifdef DEBUG_SEQUENCE
 			std::cout << "isMoveComplete end" << std::endl;
@@ -269,8 +278,15 @@ int main() {
 	const std::string serverUrl = "http://dojorena.io/codenjoy-contest/board/player/dojorena329?code=6433848582930553241";
 
 	while(1) {
+		
+		try{
 		details::BeastGameClient gcb(serverUrl);
 		gcb.Run(makeTurn);
+		}
+		catch(std::exception& e)
+		{
+			std::cout << std::endl << "ERROR in gcb.Run(). - >"<<e.what() << std::endl;
+		};
 	}
 
 	return 0;
