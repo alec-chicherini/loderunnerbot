@@ -4,7 +4,7 @@
 #include "details/BeastGameClient.h"
 #include "GameBoard.h"
 #include "Graph.h"
-
+#define DEBUG
 //#define DEBUG_SEQUENCE
 //#define DEBUG_PAUSE
 
@@ -14,15 +14,19 @@ static Graph Gr;
 bool isCurrentRouteInWork = false;
 bool recreate = false;
 bool isMoveComplete = true;
+//bool portalWasUsed = false;
 
 BoardPoint nextStep;
+BoardPoint lastStep;
+
+int suicide_counter=0;
 
 
 std::vector<LodeRunnerAction> LEFT_DRILLRIGHT_RIGTH_SEQUENCE
 {
 	LodeRunnerAction::GO_LEFT,
 	LodeRunnerAction::DRILL_RIGHT,
-	LodeRunnerAction::GO_RIGHT,
+	//LodeRunnerAction::GO_RIGHT,
 	LodeRunnerAction::GO_RIGHT
 };
 
@@ -30,8 +34,25 @@ std::vector<LodeRunnerAction> RIGHT_DRILLLEFT_LEFT_SEQUENCE
 {
 	LodeRunnerAction::GO_RIGHT,
 	LodeRunnerAction::DRILL_LEFT,
-	LodeRunnerAction::GO_LEFT,
+	//LodeRunnerAction::GO_LEFT,
 	LodeRunnerAction::GO_LEFT
+};
+
+std::vector<LodeRunnerAction> DRILLRIGHT_RIGTH_SEQUENCE
+{
+	
+	LodeRunnerAction::DRILL_RIGHT,
+	//LodeRunnerAction::GO_RIGHT,
+	LodeRunnerAction::GO_RIGHT
+	
+};
+std::vector<LodeRunnerAction> DRILLLEFT_LEFT_SEQUENCE
+{
+
+	LodeRunnerAction::DRILL_LEFT,
+	//LodeRunnerAction::GO_LEFT,
+	LodeRunnerAction::GO_LEFT
+
 };
 
 enum class SEQUENCE
@@ -39,7 +60,9 @@ enum class SEQUENCE
 	NONE,
 	SKIP_1_TICK,
 	LEFT_DRILLRIGHT_RIGHT,
-	RIGHT_DRILLLEFT_LEFT
+	RIGHT_DRILLLEFT_LEFT,
+	DRILLLEFT_LEFT,
+	DRILLRIGTH_RIGHT
 };
 
 SEQUENCE current_sequence = SEQUENCE::NONE;
@@ -65,7 +88,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 
 	 prev_enemy_state = current_enemy_state;
 	 is_this_first_tick = false;
-	 if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
+	// if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
  };
 
  if ((prev_enemy_state.getX() == current_enemy_state.getX()) &&
@@ -74,39 +97,84 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 
  prev_enemy_state = current_enemy_state;
 
-	if (isGamePaused)
-	{ 
+ if (isGamePaused)
+ {
 
-		std::cout << "GAME is PAUSED"<<std::endl;
-		current_sequence = SEQUENCE::NONE;
-		sequence_step = 0;
+	 std::cout << "-PAUSE-";
+	 current_sequence = SEQUENCE::NONE;
+	 sequence_step = 0;
 
-		isBaseGraphMade = false;
-		Gr.cleanUp();
+	 isBaseGraphMade = false;
+	 Gr.cleanUp();
 
-		isCurrentRouteInWork = false;
-		recreate = false;
-		isMoveComplete = true;
+	 isCurrentRouteInWork = false;
+	 recreate = false;
+	 isMoveComplete = true;
 
-		return LodeRunnerAction::GO_UP;
-	}
+	 suicide_counter = 0;
 
-
-
+	 return LodeRunnerAction::GO_UP;
+ }
+ 
 	if (current_sequence == SEQUENCE::NONE)
 	{
 
-
-#ifdef DEBUG_SEQUENCE
-		std::cout << "current_sequence = " << static_cast<int>(current_sequence);
+		if (suicide_counter == 10) {
+#ifdef DEBUG
+			std::cout << std::endl << "suicide_counter == 10 -> LodeRunnerAction::SUICIDE" << std::endl;
 #endif
+			return LodeRunnerAction::SUICIDE;
+		}
 		
 
+#ifdef DEBUG_SEQUENCE
+		std::cout << "current_sequence = " << static_cast<int>(current_sequence)<<std::endl;
+#endif
+		
 		if (!isBaseGraphMade)
 			isBaseGraphMade = Gr.BuildGraphFromMap(board);
 
 		const BoardPoint& position = board.getMyPosition();
 		std::cout << " [" << position.getX() << "," << position.getY() << "] ->>";
+
+		if (position == lastStep)suicide_counter++;
+			else suicide_counter = 0;
+
+		if (isMoveComplete)
+		{
+
+#ifdef DEBUG_SEQUENCE
+			std::cout << "isMoveComplete begin" << std::endl;
+#endif
+
+			isMoveComplete = false;
+			lastStep = nextStep;
+
+			if (!Gr.isCurrentRouteEmpty())
+				 nextStep = Gr.makeStep();
+			
+			
+#ifdef DEBUG_SEQUENCE
+			std::cout << "isMoveComplete end" << std::endl;
+#endif
+		};
+
+		if (Gr.isCurrentRouteEmpty())
+		{
+#ifdef DEBUG
+			std::cout << " CurrentRoute is Empty - Route reCreate.  " << std::endl;
+#endif
+			isCurrentRouteInWork = false;
+
+		};
+
+		if (!Gr.checkCurrentRoute(board))
+		{
+#ifdef DEBUG
+			std::cout << " CurrentRoute is note clear - Route reCreate.  " << std::endl;
+#endif
+			isCurrentRouteInWork = false;
+		};
 
 		if (!isCurrentRouteInWork) {
 #ifdef DEBUG_SEQUENCE
@@ -116,34 +184,26 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			Gr.printCurrentRoute();
 			if (!Gr.checkCurrentRoute(board))
 			{
-				if(!Gr.findCleanRoute(board))return LodeRunnerAction::SUICIDE;
-			};
+				if (!Gr.findCleanRoute(board))
+				{
+					//std::cout << std::endl << " findCleanRoute == false => SUICIDE" << std::endl;
+					return LodeRunnerAction::GO_RIGHT;
+				}
+				else {
+					lastStep = nextStep; 
+					nextStep = Gr.makeStep();
+				}
+			}
+			else {
+				lastStep = nextStep;
+				nextStep = Gr.makeStep();
+			}
 			
 			isCurrentRouteInWork = true;
 #ifdef DEBUG_SEQUENCE
 			std::cout << "createRouteWithBFS end" << std::endl;
 #endif
 		}
-
-		if (isMoveComplete||(position==nextStep))
-		{
-
-#ifdef DEBUG_SEQUENCE
-			std::cout << "isMoveComplete begin" << std::endl;
-#endif
-			nextStep = Gr.makeStep();
-			isMoveComplete = false;
-			if (Gr.isCurrentRouteEmpty())
-			{
-				isCurrentRouteInWork = false;
-
-				std::cout << std::endl;
-				std::cout << "Route in work: ";
-			}
-#ifdef DEBUG_SEQUENCE
-			std::cout << "isMoveComplete end" << std::endl;
-#endif
-		};
 
 		//left
 		if (nextStep.getX() < position.getX())
@@ -152,9 +212,18 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			std::cout << "LEFT: (nextStep.getX()= "<< nextStep.getX()<<" < " 
 				      << "position.getX() = " << position.getX() << " ) "<< std::endl;
 #endif
-			isMoveComplete = true;
-			return LodeRunnerAction::GO_LEFT;
+			if (Gr.isSecondBrick(board))
+			{
+				current_sequence = SEQUENCE::DRILLLEFT_LEFT;
+				sequence_step = 0;
+				return DRILLLEFT_LEFT_SEQUENCE[sequence_step++];
+			}
+			else {
+				isMoveComplete = true;
+				return LodeRunnerAction::GO_LEFT;
+			};
 		}
+
 		//rigth
 		else if (nextStep.getX() > position.getX())
 		{
@@ -162,8 +231,16 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			std::cout << "RIGHT: (nextStep.getX()= " << nextStep.getX() << " > "
 					  << "position.getX() = " << position.getX() << " ) " << std::endl;
 #endif
-			isMoveComplete = true;
-			return LodeRunnerAction::GO_RIGHT;
+			if (Gr.isSecondBrick(board))
+			{
+				current_sequence = SEQUENCE::DRILLRIGTH_RIGHT;
+				sequence_step = 0;
+				return DRILLRIGHT_RIGTH_SEQUENCE[sequence_step++];
+			}
+			else {
+				isMoveComplete = true;
+				return LodeRunnerAction::GO_RIGHT;
+			}
 		}
 		//down
 		else if (nextStep.getY() > position.getY())
@@ -224,6 +301,21 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			isMoveComplete = true;
 			return LodeRunnerAction::GO_UP;
 		}
+		else 
+		{
+			std::cout << std::endl<< "ERROR: something go wrong step not choosn!" << std::endl;
+			std::cout << "nextStep.getX() = "<< nextStep.getX() 
+					  << "nextStep.getY() = "<< nextStep.getY() << std::endl;
+			std::cout << "lastStep.getX() = " << lastStep.getX()
+					  << "lastStep.getY() = " << lastStep.getY() << std::endl;
+			std::cout << "position.getX() = " << position.getX()
+				      << "position.getY() = " << position.getY() << std::endl;
+			std::cout << "Gr.isCurrentRouteEmpty() = " << Gr.isCurrentRouteEmpty()<< std::endl;
+			std::cout << "isCurrentRouteInWork = " << isCurrentRouteInWork << std::endl;
+			
+			
+
+		}
 	}
 
 	else
@@ -232,39 +324,68 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		case SEQUENCE::LEFT_DRILLRIGHT_RIGHT:
 		{
 #ifdef DEBUG_SEQUENCE
-			std::cout << "case SEQUENCE::LEFT_DRILLRIGHT_RIGHT: " << std::endl;
-			std::cout << "current_sequence = " << static_cast<int>(current_sequence) << std::endl;
-			std::cout << "sequence_step = " << sequence_step << std::endl;
+			std::cout << "case SEQUENCE::LEFT_DRILLRIGHT_RIGHT: " ;
+			std::cout << " current_sequence = " << static_cast<int>(current_sequence) ;
+			std::cout << " sequence_step = " << sequence_step << std::endl;
 #endif
-			if (sequence_step != LEFT_DRILLRIGHT_RIGTH_SEQUENCE.size() - 1)
+			if (sequence_step != LEFT_DRILLRIGHT_RIGTH_SEQUENCE.size())
 				return LEFT_DRILLRIGHT_RIGTH_SEQUENCE[sequence_step++];
-			else current_sequence = SEQUENCE::SKIP_1_TICK;
+			else { current_sequence = SEQUENCE::SKIP_1_TICK; break; }
 
 			break;
 		}
 		case SEQUENCE::RIGHT_DRILLLEFT_LEFT:
 		{
 #ifdef DEBUG_SEQUENCE
-			std::cout << "case SEQUENCE::RIGHT_DRILLLEFT_LEFT: " << std::endl;
-			std::cout << "current_sequence = " << static_cast<int>(current_sequence) << std::endl;
-			std::cout << "sequence_step = " << sequence_step << std::endl;
+			std::cout << "case SEQUENCE::RIGHT_DRILLLEFT_LEFT: ";
+			std::cout << " current_sequence = " << static_cast<int>(current_sequence);
+			std::cout << " sequence_step = " << sequence_step << std::endl;
 #endif
-			if (sequence_step != RIGHT_DRILLLEFT_LEFT_SEQUENCE.size() - 1)
+			if (sequence_step != RIGHT_DRILLLEFT_LEFT_SEQUENCE.size())
 				return RIGHT_DRILLLEFT_LEFT_SEQUENCE[sequence_step++];
-			else current_sequence = SEQUENCE::SKIP_1_TICK;
+			else { current_sequence = SEQUENCE::SKIP_1_TICK; break; }
+
+			break;
+		}
+		//
+		case SEQUENCE::DRILLLEFT_LEFT:
+		{
+#ifdef DEBUG_SEQUENCE
+			std::cout << "case SEQUENCE::DRILLLEFT_LEFT: "  ;
+			std::cout << " current_sequence = " << static_cast<int>(current_sequence);
+			std::cout << " sequence_step = " << sequence_step << std::endl;
+#endif
+			if (sequence_step != DRILLLEFT_LEFT_SEQUENCE.size())
+				return DRILLLEFT_LEFT_SEQUENCE[sequence_step++];
+			else { current_sequence = SEQUENCE::SKIP_1_TICK; break; }
+
+			break;
+		}
+		//
+		case SEQUENCE::DRILLRIGTH_RIGHT:
+		{
+#ifdef DEBUG_SEQUENCE
+			std::cout << "case SEQUENCE::DRILLRIGTH_RIGHT: " ;
+			std::cout << " current_sequence = " << static_cast<int>(current_sequence) ;
+			std::cout << " sequence_step = " << sequence_step << std::endl;
+#endif
+			if (sequence_step != DRILLRIGHT_RIGTH_SEQUENCE.size())
+				return DRILLRIGHT_RIGTH_SEQUENCE[sequence_step++];
+			else { current_sequence = SEQUENCE::SKIP_1_TICK; break; }
 
 			break;
 		}
 		case SEQUENCE::SKIP_1_TICK:
 		{
 #ifdef DEBUG_SEQUENCE
-			std::cout << "case SEQUENCE::SKIP_1_TICK: " << std::endl;
-			std::cout << "current_sequence = " << static_cast<int>(current_sequence) << std::endl;
-			std::cout << "sequence_step = " << sequence_step << std::endl;
+			std::cout << "case SEQUENCE::SKIP_1_TICK: "  ;
+			std::cout << " current_sequence = " << static_cast<int>(current_sequence) ;
+			std::cout << " sequence_step = " << sequence_step << std::endl;
 #endif
 			sequence_step = 0;
 			current_sequence = SEQUENCE::NONE;
-			isMoveComplete = true;
+			isMoveComplete = false;
+			isCurrentRouteInWork = false;
 			break;
 		}
 		default:

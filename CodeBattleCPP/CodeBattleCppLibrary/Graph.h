@@ -3,7 +3,7 @@
 //#define DEBUG_CREATEROUTE
 //#define DEBUG_POSSIBLEROUTES
 //#define DEBUG_CHECKCURRENTROUTE
-#define DEBUG_FINDCLEARROUTE
+//#define DEBUG_FINDCLEARROUTE
 #define DEBUG
 #include "GameBoard.h"
 #include <vector>
@@ -23,7 +23,8 @@ auto isGold = [&](BE& B) {
 	if (
 		B == BE::GREEN_GOLD ||
 		B == BE::RED_GOLD ||
-		B == BE::YELLOW_GOLD
+		B == BE::YELLOW_GOLD ||
+		B == BE::THE_SHADOW_PILL
 		) return true;
 	else return false;
 };
@@ -155,6 +156,18 @@ public:
 
 	bool isCurrentRouteEmpty() { return currentRoute.empty(); }
 
+	bool isSecondBrick(const GameBoard& board) 
+	{
+		if (currentRoute.size() > 1) {
+			auto second = board.getElementAt(currentRoute[0].second);
+			if (second == BE::BRICK)return true;
+			else return false;
+		}
+		else return false;
+	};
+
+
+
 	auto isReachable (BoardPoint&& BP)
 	{
 		auto it = std::find_if(V.begin(), V.end(),
@@ -194,17 +207,18 @@ public:
 
 		bool result = false;
 #ifdef DEBUG_FINDCLEARROUTE
+		auto dump = possibleRoutes;
 		timedelay timers;
 		timers.addTimer("findCleanRoute");
 		std::cout << std::endl << "findeCleanRoute started:" << std::endl;
-		int skip_counter = 0;
+		int skip_counter = 1;
 #endif
 		if (possibleRoutes.size())
 		{
 			possibleRoutes.erase(possibleRoutes.begin());
 			currentRoute = possibleRoutes[0];
 		}
-		else result= false;
+		
 
 		while (possibleRoutes.size())
 		{
@@ -217,7 +231,7 @@ public:
 				if(possibleRoutes.size())
 				  currentRoute = possibleRoutes[0];
 			}
-			else result= true;
+			else { result = true; break; }
 		}
 
 #ifdef DEBUG_FINDCLEARROUTE
@@ -225,8 +239,17 @@ public:
 						       <<" result = "<<std::boolalpha<<result
 							   <<" time passed :"<< timers.readTimer("findCleanRoute") 
 							   << std::endl;
+		//int counter_1=0;
+		//if(result==false)
+		//	for (auto& r : dump)
+		//	{
+		//		std::cout << "possibleRoutes [" << counter_1++ << "] = ";
+		//		for (auto& v : r)std::cout << "([" << v.first.getX() << "," << v.first.getY()
+		//							       << "],["<< v.second.getX() << "," << v.second.getY() << "])-->";
+		//		std::cout << std::endl;
+		//	}
 #endif
-		result = false;
+		
 		return result;
 	};
 
