@@ -824,8 +824,11 @@ public:
 	{
 
 		std::cout << "currentRoute = ";
-		std::cout << "[" << currentRoute.front().first.getX() << "," << currentRoute.front().first.getY() << "]-->";
-		for (auto& v : currentRoute)std::cout <<"[" << v.second.getX() << "," << v.second.getY() << "]-->";
+		if (currentRoute.size() > 0) {
+			std::cout << "[" << currentRoute.front().first.getX() << "," << currentRoute.front().first.getY() << "]-->";
+			for (auto& v : currentRoute)std::cout << "[" << v.second.getX() << "," << v.second.getY() << "]-->";
+		}
+		else std::cout << "EMPTY";
 		std::cout << std::endl;
 	};
 

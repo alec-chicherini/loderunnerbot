@@ -11,6 +11,8 @@
 //#define DEBUG_SEQUENCE
 //#define DEBUG_PAUSE
 
+//#define PAUSE
+
 bool isBaseGraphMade = false;
 static Graph Gr;
 
@@ -71,11 +73,11 @@ enum class SEQUENCE
 SEQUENCE current_sequence = SEQUENCE::NONE;
 int sequence_step=0;
 
-//bool isGamePaused=true;
-//BoardPoint prev_enemy_state;
-
-//bool is_this_first_tick = true;
-
+#ifdef PAUSE
+bool isGamePaused=true;
+BoardPoint prev_enemy_state;
+bool is_this_first_tick = true;
+#endif
 LodeRunnerAction makeTurn(const GameBoard& board) 
 {
 #ifdef DEBUG_PAUSE
@@ -84,39 +86,42 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		   <<std::endl;
 #endif // DEBUG_PAUSE
 
- //auto current_enemy_state= board.getEnemyPositions().;
+#ifdef PAUSE
+ auto current_enemy_state= board.getEnemyPositions();
 
- //if (is_this_first_tick)
- //{
+ if (is_this_first_tick)
+ {
 
-	// prev_enemy_state = current_enemy_state;
-	// is_this_first_tick = false;
-	//// if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
- //};
+	 prev_enemy_state = current_enemy_state;
+	 is_this_first_tick = false;
+	// if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
+ };
 
- //if ((prev_enemy_state.getX() == current_enemy_state.getX()) &&
-	// (prev_enemy_state.getY() == current_enemy_state.getY()))isGamePaused = true;
- //else isGamePaused = false;
+ for(auto&e:)
+ if ((prev_enemy_state.getX() == current_enemy_state.getX()) &&
+	 (prev_enemy_state.getY() == current_enemy_state.getY()))isGamePaused = true;
+ else isGamePaused = false;
 
- //prev_enemy_state = current_enemy_state;
+ prev_enemy_state = current_enemy_state;
 
- //if (isGamePaused)
- //{
+ if (isGamePaused)
+ {
 
-	// std::cout << "-PAUSE-";
-	// current_sequence = SEQUENCE::NONE;
-	// sequence_step = 0;
+	 std::cout << "-PAUSE-";
+	 current_sequence = SEQUENCE::NONE;
+	 sequence_step = 0;
 
-	// isBaseGraphMade = false;
-	// Gr.cleanUp();
+	 isBaseGraphMade = false;
+	 Gr.cleanUp();
 
-	// isCurrentRouteInWork = false;
-	// recreate = false;
-	// isMoveComplete = true;
-	// suicide_counter = 0;
+	 isCurrentRouteInWork = false;
+	 //recreate = false;
+	 isMoveComplete = true;
+	 suicide_counter = 0;
 
-	// return LodeRunnerAction::GO_UP;
- //}
+	 return LodeRunnerAction::GO_UP;
+ }
+#endif
  
 	if (current_sequence == SEQUENCE::NONE)
 	{
