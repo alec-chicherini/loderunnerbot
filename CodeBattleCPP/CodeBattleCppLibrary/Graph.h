@@ -19,6 +19,22 @@
 
 using BE = BoardElement;
 
+auto amIShadow = [&](BE B) {
+	if (
+		B == BE::HERO_SHADOW_DIE ||
+		B == BE::HERO_SHADOW_DRILL_LEFT ||
+		B == BE::HERO_SHADOW_DRILL_RIGHT ||
+		B == BE::HERO_SHADOW_LADDER ||
+		B == BE::HERO_SHADOW_LEFT ||
+		B == BE::HERO_SHADOW_RIGHT ||
+		B == BE::HERO_SHADOW_FALL_LEFT ||
+		B == BE::HERO_SHADOW_FALL_RIGHT ||
+		B == BE::HERO_SHADOW_PIPE_LEFT ||
+		B == BE::HERO_SHADOW_PIPE_RIGHT
+		) return true;
+	else return false;
+};
+
 auto isGold = [&](BE& B) {
 	if (
 		B == BE::GREEN_GOLD ||
@@ -133,6 +149,23 @@ auto isLadder = [&](BE B) {
 	else return false;
 };
 
+auto isOtherHero = [&](BE B) {
+	if (
+		
+		B == BE::OTHER_HERO_DRILL_LEFT ||
+		B == BE::OTHER_HERO_DRILL_RIGHT ||
+		B == BE::OTHER_HERO_LEFT ||
+		B == BE::OTHER_HERO_RIGHT ||
+		B == BE::OTHER_HERO_LADDER ||
+	  //B == BE::OTHER_HERO_FALL_LEFT ||
+	  //B == BE::OTHER_HERO_FALL_RIGHT ||
+		B == BE::OTHER_HERO_PIPE_LEFT ||
+		B == BE::OTHER_HERO_PIPE_RIGHT
+
+		) return true;
+	else return false;
+};
+
 class Graph
 {
 	
@@ -154,6 +187,13 @@ public:
 
 	};
 
+	void cleanUp_withoutGraph()
+	{
+
+		currentRoute.clear();
+		possibleRoutes.clear();
+
+	};
 	bool isCurrentRouteEmpty() { return currentRoute.empty(); }
 
 	bool isSecondBrick(const GameBoard& board) 
@@ -271,7 +311,7 @@ public:
 		return res;
 	};
 
-	void createRoutesWithBFS(const BoardPoint& current, const GameBoard& board, float timer_value=0.5f)
+	void createRoutesWithBFS(const BoardPoint& current, const GameBoard& board, bool amIshadow, float timer_value=0.5f)
 	{
 #ifdef DEBUG
 		timedelay timers;
@@ -334,18 +374,36 @@ public:
 
 				auto CURRENT = board.m_map[p.second.getY()][p.second.getX()];
 
-				if (isGold(CURRENT))
-				{
-					routeComplete = true;
+				if (!amIshadow) {
+					if (isGold(CURRENT))
+					{
+						routeComplete = true;
 
-					possibleRoutes.push_back(allRoutes[p.second]);
+						possibleRoutes.push_back(allRoutes[p.second]);
 
-					//currentRoute = allRoutes[p.second];
+					
 
 
 #ifdef DEBUG_CREATEROUTE
-					std::cout << "Gold found at:" << "[" << p.second.getX() << "," << p.second.getY() << "]" << std::endl;
+						std::cout << "Gold found at:" << "[" << p.second.getX() << "," << p.second.getY() << "]" << std::endl;
 #endif
+					}
+				}
+				else
+				{
+					if (isGold(CURRENT)||isOtherHero(CURRENT))
+					{
+						routeComplete = true;
+
+						possibleRoutes.push_back(allRoutes[p.second]);
+
+						
+
+
+#ifdef DEBUG_CREATEROUTE
+						std::cout << "Gold found at:" << "[" << p.second.getX() << "," << p.second.getY() << "]" << std::endl;
+#endif
+					}
 				}
 
 				if (!visited[p.second.getX()][p.second.getY()] &&
@@ -366,7 +424,7 @@ public:
 				}
 				std::cout << "allRoutes map end" << std::endl;
 #endif
-
+				
 				if (timers.readTimer("BFS") > timer_value)
 				{
 					timePassed = true;

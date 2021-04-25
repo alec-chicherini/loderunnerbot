@@ -14,7 +14,7 @@ static Graph Gr;
 bool isCurrentRouteInWork = false;
 bool recreate = false;
 bool isMoveComplete = true;
-//bool portalWasUsed = false;
+
 
 BoardPoint nextStep;
 BoardPoint lastStep;
@@ -68,10 +68,10 @@ enum class SEQUENCE
 SEQUENCE current_sequence = SEQUENCE::NONE;
 int sequence_step=0;
 
-bool isGamePaused=true;
-BoardPoint prev_enemy_state;
+//bool isGamePaused=true;
+//BoardPoint prev_enemy_state;
 
-bool is_this_first_tick = true;
+//bool is_this_first_tick = true;
 
 LodeRunnerAction makeTurn(const GameBoard& board) 
 {
@@ -81,40 +81,39 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		   <<std::endl;
 #endif // DEBUG_PAUSE
 
- auto current_enemy_state= board.getEnemyPositions().back();
+ //auto current_enemy_state= board.getEnemyPositions().;
 
- if (is_this_first_tick)
- {
+ //if (is_this_first_tick)
+ //{
 
-	 prev_enemy_state = current_enemy_state;
-	 is_this_first_tick = false;
-	// if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
- };
+	// prev_enemy_state = current_enemy_state;
+	// is_this_first_tick = false;
+	//// if (!recreate) { recreate = true; return LodeRunnerAction::SUICIDE; }
+ //};
 
- if ((prev_enemy_state.getX() == current_enemy_state.getX()) &&
-	 (prev_enemy_state.getY() == current_enemy_state.getY()))isGamePaused = true;
- else isGamePaused = false;
+ //if ((prev_enemy_state.getX() == current_enemy_state.getX()) &&
+	// (prev_enemy_state.getY() == current_enemy_state.getY()))isGamePaused = true;
+ //else isGamePaused = false;
 
- prev_enemy_state = current_enemy_state;
+ //prev_enemy_state = current_enemy_state;
 
- if (isGamePaused)
- {
+ //if (isGamePaused)
+ //{
 
-	 std::cout << "-PAUSE-";
-	 current_sequence = SEQUENCE::NONE;
-	 sequence_step = 0;
+	// std::cout << "-PAUSE-";
+	// current_sequence = SEQUENCE::NONE;
+	// sequence_step = 0;
 
-	 isBaseGraphMade = false;
-	 Gr.cleanUp();
+	// isBaseGraphMade = false;
+	// Gr.cleanUp();
 
-	 isCurrentRouteInWork = false;
-	 recreate = false;
-	 isMoveComplete = true;
+	// isCurrentRouteInWork = false;
+	// recreate = false;
+	// isMoveComplete = true;
+	// suicide_counter = 0;
 
-	 suicide_counter = 0;
-
-	 return LodeRunnerAction::GO_UP;
- }
+	// return LodeRunnerAction::GO_UP;
+ //}
  
 	if (current_sequence == SEQUENCE::NONE)
 	{
@@ -123,6 +122,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 #ifdef DEBUG
 			std::cout << std::endl << "suicide_counter == 10 -> LodeRunnerAction::SUICIDE" << std::endl;
 #endif
+			suicide_counter = 0;
 			return LodeRunnerAction::SUICIDE;
 		}
 		
@@ -137,9 +137,17 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		const BoardPoint& position = board.getMyPosition();
 		std::cout << " [" << position.getX() << "," << position.getY() << "] ->>";
 
-		if (position == lastStep)suicide_counter++;
+		if (position == lastStep) {
+			suicide_counter++;
+#ifdef DEBUG
+			std::cout << std::endl << std::endl<< " ONE SUICIDE POINT ADDED "  << std::endl << std::endl;
+#endif
+		}
 			else suicide_counter = 0;
 
+		bool amIShadow_ = false;
+		if(amIShadow(board.getElementAt(position)))amIShadow_=true;
+		
 		if (isMoveComplete)
 		{
 
@@ -148,7 +156,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 #endif
 
 			isMoveComplete = false;
-			lastStep = nextStep;
+			lastStep = position;
 
 			if (!Gr.isCurrentRouteEmpty())
 				 nextStep = Gr.makeStep();
@@ -176,26 +184,47 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			isCurrentRouteInWork = false;
 		};
 
+		auto lastelement = board.getElementAt(lastStep);
+		if (lastelement == BoardElement::PORTAL) {
+			
+#ifdef DEBUG
+			std::cout << " Portal was used - Route reCreate.  " << std::endl;
+#endif
+			isCurrentRouteInWork = false;
+			
+		}
+
+		if (amIShadow_ ) {
+			
+#ifdef DEBUG
+			std::cout << " I AM SHADOW - Route reCreate.  " << std::endl;
+#endif
+			isCurrentRouteInWork = false;
+			
+		}
+
 		if (!isCurrentRouteInWork) {
 #ifdef DEBUG_SEQUENCE
 			std::cout << "createRouteWithBFS begin"<<std::endl;
 #endif
-			Gr.createRoutesWithBFS(position, board);
+			Gr.cleanUp_withoutGraph();
+
+			Gr.createRoutesWithBFS(position, board, amIShadow_);
 			Gr.printCurrentRoute();
 			if (!Gr.checkCurrentRoute(board))
 			{
 				if (!Gr.findCleanRoute(board))
 				{
-					//std::cout << std::endl << " findCleanRoute == false => SUICIDE" << std::endl;
+					std::cout << std::endl << " findCleanRoute == false => GO_RIGHT" << std::endl;
 					return LodeRunnerAction::GO_RIGHT;
 				}
 				else {
-					lastStep = nextStep; 
+					lastStep = position;
 					nextStep = Gr.makeStep();
 				}
 			}
 			else {
-				lastStep = nextStep;
+				lastStep = position;
 				nextStep = Gr.makeStep();
 			}
 			
