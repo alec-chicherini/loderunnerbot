@@ -12,7 +12,7 @@ bool isBaseGraphMade = false;
 static Graph Gr;
 
 bool isCurrentRouteInWork = false;
-bool recreate = false;
+
 bool isMoveComplete = true;
 
 
@@ -117,6 +117,21 @@ LodeRunnerAction makeTurn(const GameBoard& board)
  
 	if (current_sequence == SEQUENCE::NONE)
 	{
+		if (suicide_counter == 3) {
+#ifdef DEBUG
+			std::cout << std::endl << "suicide_counter == 3 -> refresh everithing except suicide_counter" << std::endl;
+#endif
+ current_sequence = SEQUENCE::NONE;
+ sequence_step = 0;
+
+ isBaseGraphMade = false;
+ Gr.cleanUp();
+
+ isCurrentRouteInWork = false;
+ isMoveComplete = true;
+
+
+		}
 
 		if (suicide_counter == 10) {
 #ifdef DEBUG
@@ -131,11 +146,23 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		std::cout << "current_sequence = " << static_cast<int>(current_sequence)<<std::endl;
 #endif
 		
+		auto lastelement = board.getElementAt(lastStep);
+		if (lastelement == BoardElement::PORTAL) {
+
+#ifdef DEBUG
+			std::cout << " Portal was used - Route reCreate.  " << std::endl;
+#endif
+			isCurrentRouteInWork = false;
+
+		}
+
 		if (!isBaseGraphMade)
 			isBaseGraphMade = Gr.BuildGraphFromMap(board);
 
 		const BoardPoint& position = board.getMyPosition();
+#ifdef DEBUG
 		std::cout << " [" << position.getX() << "," << position.getY() << "] ->>";
+#endif
 
 		if (position == lastStep) {
 			suicide_counter++;
@@ -156,7 +183,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 #endif
 
 			isMoveComplete = false;
-			lastStep = position;
+			
 
 			if (!Gr.isCurrentRouteEmpty())
 				 nextStep = Gr.makeStep();
@@ -170,34 +197,26 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 		if (Gr.isCurrentRouteEmpty())
 		{
 #ifdef DEBUG
-			std::cout << " CurrentRoute is Empty - Route reCreate.  " << std::endl;
+			std::cout << std::endl << " CurrentRoute is Empty - Route reCreate.  " << std::endl;
 #endif
 			isCurrentRouteInWork = false;
 
 		};
 
-		if (!Gr.checkCurrentRoute(board))
+		if (!amIShadow_&&!Gr.checkCurrentRoute(board))
 		{
 #ifdef DEBUG
-			std::cout << " CurrentRoute is note clear - Route reCreate.  " << std::endl;
+			std::cout << std::endl << " SOME TROUBLES ON THE WAY  - Route reCreate.  " << std::endl;
 #endif
 			isCurrentRouteInWork = false;
 		};
 
-		auto lastelement = board.getElementAt(lastStep);
-		if (lastelement == BoardElement::PORTAL) {
-			
-#ifdef DEBUG
-			std::cout << " Portal was used - Route reCreate.  " << std::endl;
-#endif
-			isCurrentRouteInWork = false;
-			
-		}
+		
 
 		if (amIShadow_ ) {
 			
 #ifdef DEBUG
-			std::cout << " I AM SHADOW - Route reCreate.  " << std::endl;
+			std::cout << std::endl << " I AM SHADOW - Route reCreate.  " << std::endl;
 #endif
 			isCurrentRouteInWork = false;
 			
@@ -209,22 +228,36 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 #endif
 			Gr.cleanUp_withoutGraph();
 
-			Gr.createRoutesWithBFS(position, board, amIShadow_);
+			Gr.createRoutesWithBFS(position, board, amIShadow_,false);
+#ifdef DEBUG
 			Gr.printCurrentRoute();
-			if (!Gr.checkCurrentRoute(board))
+#endif
+			if (!amIShadow_&&!Gr.checkCurrentRoute(board))
 			{
 				if (!Gr.findCleanRoute(board))
 				{
-					std::cout << std::endl << " findCleanRoute == false => GO_RIGHT" << std::endl;
-					return LodeRunnerAction::GO_RIGHT;
+					
+					if (Gr.createRoutesWithBFS(position, board, amIShadow_, true))
+					{
+#ifdef DEBUG
+						std::cout << std::endl << "SOME TROUBLES ON THE WAY  => GO TO PORTAL" << std::endl;
+						Gr.printCurrentRoute();
+#endif
+						nextStep = Gr.makeStep();
+					};
+
+					
 				}
 				else {
-					lastStep = position;
+#ifdef DEBUG
+					std::cout << std::endl << " SOME TROUBLES ON THE WAY  =>  NEW FREE ROUTE CHOSEN" << std::endl;
+					Gr.printCurrentRoute();
+#endif
 					nextStep = Gr.makeStep();
 				}
 			}
 			else {
-				lastStep = position;
+				
 				nextStep = Gr.makeStep();
 			}
 			
@@ -233,7 +266,7 @@ LodeRunnerAction makeTurn(const GameBoard& board)
 			std::cout << "createRouteWithBFS end" << std::endl;
 #endif
 		}
-
+		lastStep = position;
 		//left
 		if (nextStep.getX() < position.getX())
 		{

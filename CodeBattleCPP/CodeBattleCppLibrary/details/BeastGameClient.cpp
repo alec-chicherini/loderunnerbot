@@ -101,7 +101,7 @@ void BeastGameClient::Run(std::function<LodeRunnerAction(const GameBoard &)> _me
 
         if (static_cast<int>(result) < 0 || static_cast<int>(result)>7)return;
 
-        std::cout << "(((" << std::to_string(result) << ")))";
+        //std::cout << "(((" << std::to_string(result) << ")))";
         m_ws.write(net::buffer(std::to_string(result)));
     }
 }

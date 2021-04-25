@@ -12,10 +12,10 @@
 #include <list>
 #include <map>
 
-#ifdef DEBUG
+
 #include "timedelay/timedelay.h"
 #include "timedelay/timedelay.cpp"
-#endif
+
 
 using BE = BoardElement;
 
@@ -41,6 +41,18 @@ auto isGold = [&](BE& B) {
 		B == BE::RED_GOLD ||
 		B == BE::YELLOW_GOLD ||
 		B == BE::THE_SHADOW_PILL
+		) return true;
+	else return false;
+};
+
+auto isBrick = [&](BE& B) {
+	if (
+		B == BE::BRICK||
+		B == BE::ENEMY_PIT||
+		B == BE::PIT_FILL_1||
+		B == BE::PIT_FILL_2 ||
+		B == BE::PIT_FILL_3 ||
+		B == BE::PIT_FILL_4 
 		) return true;
 	else return false;
 };
@@ -222,6 +234,12 @@ public:
 
 	bool checkCurrentRoute(const GameBoard& board)
 	{
+#ifdef DEBUG_CHECKCURRENTROUTE
+		timedelay timers;
+		timers.addTimer("checkCurrentRoute");
+
+		std::cout << "checkCurrentRoute started ...";
+#endif
 		bool result=true;
 #ifdef DEBUG_CHECKCURRENTROUTE
 		std::cout << std::endl;
@@ -238,12 +256,25 @@ public:
 #ifdef DEBUG_CHECKCURRENTROUTE
 		std::cout << "checkCurrentRoute result:" <<std::boolalpha<< result<<std::endl;
 #endif
+
+#ifdef DEBUG_CHECKCURRENTROUTE
+
+		std::cout << "finished. Time passed:" << timers.readTimer("checkCurrentRoute") << " s " << std::endl;
+		//this->print();
+#endif
 		return result;
 
 	};
 
 	bool findCleanRoute(const GameBoard& board)
 	{
+
+#ifdef DEBUG
+		timedelay timers;
+		timers.addTimer("CLEANROUTE");
+
+		std::cout << "findCleanRoute started ...";
+#endif
 
 		bool result = false;
 #ifdef DEBUG_FINDCLEARROUTE
@@ -290,6 +321,12 @@ public:
 		//	}
 #endif
 		
+
+#ifdef DEBUG
+
+		std::cout << "finished. Time passed:" << timers.readTimer("CLEANROUTE") << " s " << std::endl;
+		//this->print();
+#endif
 		return result;
 	};
 
@@ -311,14 +348,22 @@ public:
 		return res;
 	};
 
-	void createRoutesWithBFS(const BoardPoint& current, const GameBoard& board, bool amIshadow, float timer_value=0.5f)
+	bool createRoutesWithBFS(
+		const BoardPoint& current,
+		const GameBoard& board,
+		bool amIshadow,
+		bool isLookingForPortal,
+		float timer_value=0.5f)
 	{
-#ifdef DEBUG
+
 		timedelay timers;
 		timers.addTimer("BFS");
-		std::cout <<std::endl<< "Finding routes started " << std::endl;
+
+#ifdef DEBUG
+		std::cout << "Finding routes started ... ";
 #endif
 		currentRoute.clear();
+		possibleRoutes.clear();
 
 		auto BoardPointComparator = [&](const BoardPoint& BP1, const BoardPoint& BP2) 
 		{
@@ -373,8 +418,20 @@ public:
 				allRoutes[p.second] = routeToP();
 
 				auto CURRENT = board.m_map[p.second.getY()][p.second.getX()];
+				if (isLookingForPortal)
+				{
+					if (CURRENT==BE::PORTAL)
+					{
+						routeComplete = true;
 
-				if (!amIshadow) {
+						possibleRoutes.push_back(allRoutes[p.second]);
+
+#ifdef DEBUG_CREATEROUTE
+						std::cout << "Portal found at:" << "[" << p.second.getX() << "," << p.second.getY() << "]" << std::endl;
+#endif
+					}
+				}
+				else if (!amIshadow) {
 					if (isGold(CURRENT))
 					{
 						routeComplete = true;
@@ -441,8 +498,18 @@ public:
 
 		}	//main while bfs search cycle
 
-		if(possibleRoutes.size()>0)
-		currentRoute = possibleRoutes[0];
+#ifdef DEBUG
+
+		std::cout << "finished.  Possible routes: " << possibleRoutes.size()
+			<< " Time passed:" << timers.readTimer("BFS") << " s " << std::endl;
+		//this->print();
+#endif
+
+		if (possibleRoutes.size() > 0) {
+			currentRoute = possibleRoutes[0];
+			return true;
+		}
+		else return false;
 
 #ifdef DEBUG_POSSIBLEROUTES
 
@@ -456,22 +523,19 @@ public:
 
 #endif
 
-#ifdef DEBUG
 
-		std::cout <<"Finding routes finished. Possible routes: " << possibleRoutes.size()
-				  <<" Time passed:"<< timers.readTimer("BFS") << " s " << std::endl;
-		//this->print();
-#endif
 	};
 	
 	bool BuildGraphFromMap(const GameBoard& board)
 	{
 
-#ifdef DEBUG
+
 		timedelay timers;
 		timers.addTimer("started");
+
+#ifdef DEBUG
+		std::cout << "building graph started ...";
 #endif
-		std::cout << "building graph started" << std::endl;
 
 		int SIZE = board.m_map.size();
 		for (int row = 0; row < SIZE; row++)
@@ -507,7 +571,7 @@ public:
 #endif
 					if (isWalkable(B))
 					{
-						if (L != BE::BRICK && L != BE::INDESTRUCTIBLE_WALL)
+						if (!isBrick(L)  && L != BE::INDESTRUCTIBLE_WALL)
 						{
 							E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column - 1,row }));
 							V.push_back(BoardPoint{ column - 1,row });
@@ -516,7 +580,7 @@ public:
 							std::cout << " V.push_back( " << column - 1<<","<<row<<") =>";
 #endif
 						};
-						if (R != BE::BRICK && R != BE::INDESTRUCTIBLE_WALL)
+						if (!isBrick(R)  && R != BE::INDESTRUCTIBLE_WALL)
 						{
 							E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column + 1,row }));
 							V.push_back(BoardPoint{ column + 1,row });
@@ -540,7 +604,7 @@ public:
 
 					}
 
-					if (B == BE::BRICK)
+					if (isBrick(B))
 					{
 						if (isWalkable(BL) || isWalkable(BR))
 						{
@@ -566,7 +630,7 @@ public:
 
 					std::cout << "BE::LADDER =>";
 #endif
-					if (L != BE::BRICK && L != BE::INDESTRUCTIBLE_WALL)
+					if (!isBrick(L)  && L!=BE::INDESTRUCTIBLE_WALL )
 					{
 						E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column - 1,row }));
 						V.push_back(BoardPoint{ column - 1,row });
@@ -575,7 +639,7 @@ public:
 						std::cout << " V.push_back( " << column -1 << "," << row  << ") =>";
 #endif
 					};
-					if (R != BE::BRICK && R != BE::INDESTRUCTIBLE_WALL)
+					if (!isBrick(R)  && R != BE::INDESTRUCTIBLE_WALL)
 					{
 						E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column + 1,row }));
 						V.push_back(BoardPoint{ column + 1,row });
@@ -584,7 +648,7 @@ public:
 						std::cout << " V.push_back( " << column + 1 << "," << row << ") =>";
 #endif
 					};
-					if (isLadder(T))
+					if (isLadder(T)|| (T == BE::NONE) || isPipe(T) || isLikeNONE(T))
 					{
 						E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column ,row - 1 }));
 						V.push_back(BoardPoint{ column , row - 1 });
@@ -611,9 +675,10 @@ public:
 						std::cout << " V.push_back( " << column  << "," << row+1 << ") =>";
 #endif
 					}
-					else if (B == BE::BRICK)
+					else if (isBrick(B) )
 					{
-						if (isWalkable(BL) || isWalkable(BR))
+						//not working
+						/*if (isWalkable(BL) || isWalkable(BR))
 						{
 							E.push_back(std::make_pair(BoardPoint{ column,row }, BoardPoint{ column,row + 1 }));
 							V.push_back(BoardPoint{ column,row + 1 });
@@ -621,7 +686,7 @@ public:
 
 							std::cout << " V.push_back( " << column  << "," << row +1<< ") =>";
 #endif
-						};
+						};*/
 
 					};
 #ifdef DEBUG_GRAPHFROMMAP
@@ -740,7 +805,7 @@ public:
 
 #ifdef DEBUG
 			
-			std::cout<<"Building graph finished : "<<timers.readTimer("started")<<" s "<<std::endl;
+			std::cout<<"finished. Achievable points found: "<< V.size()<<" Time passed:"<<timers.readTimer("started")<<" s "<<std::endl;
 			//this->print();
 #endif
 			return true;
@@ -755,8 +820,10 @@ public:
 
 	void printCurrentRoute()
 	{
+
 		std::cout << "currentRoute = ";
-		for (auto& v : currentRoute)std::cout << "([" << v.first.getX() << "," << v.first.getY() << "],[" << v.second.getX() << "," << v.second.getY() << "])-->";
+		std::cout << "[" << currentRoute.front().first.getX() << "," << currentRoute.front().first.getY() << "]-->";
+		for (auto& v : currentRoute)std::cout <<"[" << v.second.getX() << "," << v.second.getY() << "]-->";
 		std::cout << std::endl;
 	};
 
