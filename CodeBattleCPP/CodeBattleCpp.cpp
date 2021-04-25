@@ -1,3 +1,6 @@
+//CHICHERIN ALEXEY loderunner bot for CodeBattle 25.04.2021
+//https://github.com/ikvasir/loderunnerbot
+
 #include <iostream>
 #include <random>
 

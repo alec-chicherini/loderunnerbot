@@ -1,3 +1,5 @@
+//CHICHERIN ALEXEY loderunner bot for CodeBattle 25.04.2021
+//https://github.com/ikvasir/loderunnerbot
 #pragma once
 //#define DEBUG_GRAPHFROMMAP
 //#define DEBUG_CREATEROUTE
